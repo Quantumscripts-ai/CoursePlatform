@@ -86,44 +86,6 @@ function WhoThisCourseIsFor() {
                 </motion.div>
             </div>
 
-            {/* Side Panel - Positioned Absolutely within section */}
-            <motion.div
-                className="absolute right-0 top-1/2 -translate-y-1/2 z-10 hidden xl:block"
-                initial={{ x: 100, opacity: 0 }}
-                whileInView={{ x: 0, opacity: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.5, duration: 0.4 }}
-            >
-                <div className="bg-dark-card rounded-l-xl shadow-2xl p-4 flex flex-col gap-2 min-w-[160px] border border-border border-r-0">
-                    {/* Explore Templates */}
-                    <div className="flex items-center gap-3">
-                        <div className="flex gap-1">
-                            <div className="w-6 h-6 bg-blue-600 rounded flex items-center justify-center text-xs text-white">
-                                📦
-                            </div>
-                            <div className="w-6 h-6 bg-blue-400 rounded flex items-center justify-center text-xs text-white">
-                                🎨
-                            </div>
-                        </div>
-                    </div>
-                    <div>
-                        <p className="text-xs text-text-dim">Explore our</p>
-                        <p className="text-xs text-text-muted">premium templates</p>
-                    </div>
-                    <a
-                        href="#templates"
-                        className="text-xs text-blue-400 hover:text-blue-300 transition-colors font-medium"
-                    >
-                        More templates
-                    </a>
-
-                    <div className="border-t border-border pt-3 mt-2">
-                        <div className="w-6 h-6 bg-green-500 rounded flex items-center justify-center text-xs text-white mb-2">
-                            ✏️
-                        </div>
-                    </div>
-                </div>
-            </motion.div>
         </section>
     );
 }

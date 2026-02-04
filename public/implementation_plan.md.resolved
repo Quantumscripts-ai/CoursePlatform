@@ -1,0 +1,1353 @@
+# White-Label Course Platform - Implementation Plan
+
+## Overview
+
+This implementation plan covers the development of a **modular white-label course platform** with **Supabase** as the primary database. The platform consists of **14 core modules** and **3 add-on modules** designed to serve India's creator economy.
+
+---
+
+## Technology Stack
+
+| Layer | Technology | Purpose |
+|-------|------------|---------|
+| **Frontend** | Next.js 14, React 18, TailwindCSS | Student portal, Creator dashboard |
+| **Backend** | Node.js, Express.js | API layer, Business logic |
+| **Database** | **Supabase (PostgreSQL)** | Primary data storage, Auth, Real-time |
+| **Cache** | Redis | Sessions, Rate limiting, Hot data |
+| **Search** | Supabase Full-text Search / Elasticsearch | Forum search, Course search |
+| **Payments** | Razorpay, Stripe | Payment processing |
+| **Video** | Vimeo SDK, Cloudflare Stream | Video hosting & streaming |
+| **Email** | SendGrid, AWS SES | Email automation |
+| **Live Classes** | Zoom SDK | Live class integration |
+| **Storage** | Supabase Storage, AWS S3 | File & video storage |
+| **Deployment** | Vercel (frontend), Cloud Run/AWS (backend) | Hosting |
+| **Mobile** | React Native | iOS & Android apps |
+
+---
+
+## Supabase Database Schema
+
+```sql
+-- =====================================================
+-- CORE TABLES
+-- =====================================================
+
+-- Creators/Platform Owners
+CREATE TABLE creators (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email VARCHAR(255) UNIQUE NOT NULL,
+  password_hash VARCHAR(255),
+  name VARCHAR(255) NOT NULL,
+  avatar_url TEXT,
+  brand_name VARCHAR(255),
+  custom_domain VARCHAR(255),
+  subscription_tier VARCHAR(50) DEFAULT 'starter',
+  razorpay_account_id VARCHAR(255),
+  stripe_account_id VARCHAR(255),
+  settings JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Students
+CREATE TABLE students (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  creator_id UUID REFERENCES creators(id) ON DELETE CASCADE,
+  email VARCHAR(255) NOT NULL,
+  password_hash VARCHAR(255),
+  name VARCHAR(255),
+  avatar_url TEXT,
+  phone VARCHAR(20),
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(creator_id, email)
+);
+
+-- Courses
+CREATE TABLE courses (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  creator_id UUID REFERENCES creators(id) ON DELETE CASCADE,
+  title VARCHAR(500) NOT NULL,
+  slug VARCHAR(255) NOT NULL,
+  description TEXT,
+  thumbnail_url TEXT,
+  preview_video_url TEXT,
+  price DECIMAL(10,2) DEFAULT 0,
+  currency VARCHAR(3) DEFAULT 'INR',
+  status VARCHAR(20) DEFAULT 'draft',
+  is_featured BOOLEAN DEFAULT false,
+  drip_enabled BOOLEAN DEFAULT false,
+  settings JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(creator_id, slug)
+);
+
+-- Modules/Sections within Courses
+CREATE TABLE course_modules (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  course_id UUID REFERENCES courses(id) ON DELETE CASCADE,
+  title VARCHAR(500) NOT NULL,
+  description TEXT,
+  position INT DEFAULT 0,
+  drip_delay_days INT DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Lessons
+CREATE TABLE lessons (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  module_id UUID REFERENCES course_modules(id) ON DELETE CASCADE,
+  title VARCHAR(500) NOT NULL,
+  content_type VARCHAR(50) DEFAULT 'video',
+  video_url TEXT,
+  video_duration INT DEFAULT 0,
+  content_html TEXT,
+  attachments JSONB DEFAULT '[]',
+  position INT DEFAULT 0,
+  is_preview BOOLEAN DEFAULT false,
+  drip_date TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enrollments
+CREATE TABLE enrollments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  student_id UUID REFERENCES students(id) ON DELETE CASCADE,
+  course_id UUID REFERENCES courses(id) ON DELETE CASCADE,
+  enrolled_at TIMESTAMPTZ DEFAULT NOW(),
+  expires_at TIMESTAMPTZ,
+  status VARCHAR(20) DEFAULT 'active',
+  source VARCHAR(50),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(student_id, course_id)
+);
+
+-- Progress Tracking
+CREATE TABLE lesson_progress (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  student_id UUID REFERENCES students(id) ON DELETE CASCADE,
+  lesson_id UUID REFERENCES lessons(id) ON DELETE CASCADE,
+  completed BOOLEAN DEFAULT false,
+  progress_percent INT DEFAULT 0,
+  last_position INT DEFAULT 0,
+  completed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(student_id, lesson_id)
+);
+
+-- =====================================================
+-- PAYMENT & MONETIZATION TABLES
+-- =====================================================
+
+-- Orders
+CREATE TABLE orders (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  creator_id UUID REFERENCES creators(id),
+  student_id UUID REFERENCES students(id),
+  course_id UUID REFERENCES courses(id),
+  membership_id UUID,
+  amount DECIMAL(10,2) NOT NULL,
+  currency VARCHAR(3) DEFAULT 'INR',
+  payment_gateway VARCHAR(50),
+  gateway_order_id VARCHAR(255),
+  gateway_payment_id VARCHAR(255),
+  status VARCHAR(20) DEFAULT 'pending',
+  coupon_code VARCHAR(50),
+  discount_amount DECIMAL(10,2) DEFAULT 0,
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  paid_at TIMESTAMPTZ
+);
+
+-- Memberships/Subscriptions
+CREATE TABLE memberships (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  creator_id UUID REFERENCES creators(id) ON DELETE CASCADE,
+  name VARCHAR(255) NOT NULL,
+  description TEXT,
+  price DECIMAL(10,2) NOT NULL,
+  billing_period VARCHAR(20) DEFAULT 'monthly',
+  features JSONB DEFAULT '[]',
+  course_access JSONB DEFAULT '[]',
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Member Subscriptions
+CREATE TABLE member_subscriptions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  student_id UUID REFERENCES students(id) ON DELETE CASCADE,
+  membership_id UUID REFERENCES memberships(id),
+  status VARCHAR(20) DEFAULT 'active',
+  current_period_start TIMESTAMPTZ,
+  current_period_end TIMESTAMPTZ,
+  gateway_subscription_id VARCHAR(255),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Coupons
+CREATE TABLE coupons (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  creator_id UUID REFERENCES creators(id) ON DELETE CASCADE,
+  code VARCHAR(50) NOT NULL,
+  discount_type VARCHAR(20) DEFAULT 'percentage',
+  discount_value DECIMAL(10,2) NOT NULL,
+  max_uses INT,
+  used_count INT DEFAULT 0,
+  valid_from TIMESTAMPTZ,
+  valid_until TIMESTAMPTZ,
+  applicable_courses JSONB DEFAULT '[]',
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(creator_id, code)
+);
+
+-- Affiliate/Referrals
+CREATE TABLE affiliates (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  creator_id UUID REFERENCES creators(id) ON DELETE CASCADE,
+  name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  referral_code VARCHAR(50) UNIQUE NOT NULL,
+  commission_percent DECIMAL(5,2) DEFAULT 10,
+  total_earnings DECIMAL(10,2) DEFAULT 0,
+  pending_payout DECIMAL(10,2) DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- =====================================================
+-- ENGAGEMENT & COMMUNITY TABLES
+-- =====================================================
+
+-- Community Forums
+CREATE TABLE forum_categories (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  creator_id UUID REFERENCES creators(id) ON DELETE CASCADE,
+  name VARCHAR(255) NOT NULL,
+  description TEXT,
+  position INT DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE forum_posts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  category_id UUID REFERENCES forum_categories(id) ON DELETE CASCADE,
+  student_id UUID REFERENCES students(id),
+  title VARCHAR(500) NOT NULL,
+  content TEXT NOT NULL,
+  is_pinned BOOLEAN DEFAULT false,
+  is_locked BOOLEAN DEFAULT false,
+  view_count INT DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE forum_replies (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  post_id UUID REFERENCES forum_posts(id) ON DELETE CASCADE,
+  student_id UUID REFERENCES students(id),
+  content TEXT NOT NULL,
+  is_solution BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Live Classes
+CREATE TABLE live_classes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  creator_id UUID REFERENCES creators(id) ON DELETE CASCADE,
+  course_id UUID REFERENCES courses(id),
+  title VARCHAR(500) NOT NULL,
+  description TEXT,
+  scheduled_at TIMESTAMPTZ NOT NULL,
+  duration_minutes INT DEFAULT 60,
+  zoom_meeting_id VARCHAR(255),
+  zoom_join_url TEXT,
+  recording_url TEXT,
+  status VARCHAR(20) DEFAULT 'scheduled',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE live_class_attendees (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  live_class_id UUID REFERENCES live_classes(id) ON DELETE CASCADE,
+  student_id UUID REFERENCES students(id),
+  joined_at TIMESTAMPTZ,
+  left_at TIMESTAMPTZ,
+  duration_seconds INT DEFAULT 0
+);
+
+-- =====================================================
+-- QUIZ & ASSESSMENT TABLES
+-- =====================================================
+
+CREATE TABLE quizzes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  lesson_id UUID REFERENCES lessons(id) ON DELETE CASCADE,
+  title VARCHAR(500) NOT NULL,
+  description TEXT,
+  time_limit_minutes INT,
+  passing_score INT DEFAULT 70,
+  max_attempts INT DEFAULT 3,
+  shuffle_questions BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE quiz_questions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  quiz_id UUID REFERENCES quizzes(id) ON DELETE CASCADE,
+  question_text TEXT NOT NULL,
+  question_type VARCHAR(20) DEFAULT 'multiple_choice',
+  options JSONB DEFAULT '[]',
+  correct_answer JSONB,
+  points INT DEFAULT 1,
+  position INT DEFAULT 0
+);
+
+CREATE TABLE quiz_attempts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  quiz_id UUID REFERENCES quizzes(id) ON DELETE CASCADE,
+  student_id UUID REFERENCES students(id),
+  answers JSONB DEFAULT '{}',
+  score INT,
+  passed BOOLEAN,
+  started_at TIMESTAMPTZ DEFAULT NOW(),
+  completed_at TIMESTAMPTZ
+);
+
+-- =====================================================
+-- CERTIFICATES
+-- =====================================================
+
+CREATE TABLE certificate_templates (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  creator_id UUID REFERENCES creators(id) ON DELETE CASCADE,
+  name VARCHAR(255) NOT NULL,
+  template_html TEXT,
+  background_url TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE issued_certificates (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  student_id UUID REFERENCES students(id),
+  course_id UUID REFERENCES courses(id),
+  template_id UUID REFERENCES certificate_templates(id),
+  certificate_number VARCHAR(50) UNIQUE NOT NULL,
+  issued_at TIMESTAMPTZ DEFAULT NOW(),
+  pdf_url TEXT,
+  metadata JSONB DEFAULT '{}'
+);
+
+-- =====================================================
+-- EMAIL AUTOMATION
+-- =====================================================
+
+CREATE TABLE email_sequences (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  creator_id UUID REFERENCES creators(id) ON DELETE CASCADE,
+  name VARCHAR(255) NOT NULL,
+  trigger_event VARCHAR(50) NOT NULL,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE email_sequence_steps (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  sequence_id UUID REFERENCES email_sequences(id) ON DELETE CASCADE,
+  subject VARCHAR(500) NOT NULL,
+  body_html TEXT NOT NULL,
+  delay_hours INT DEFAULT 0,
+  position INT DEFAULT 0
+);
+
+CREATE TABLE email_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  creator_id UUID REFERENCES creators(id),
+  student_id UUID REFERENCES students(id),
+  sequence_id UUID REFERENCES email_sequences(id),
+  step_id UUID REFERENCES email_sequence_steps(id),
+  subject VARCHAR(500),
+  status VARCHAR(20) DEFAULT 'sent',
+  opened_at TIMESTAMPTZ,
+  clicked_at TIMESTAMPTZ,
+  sent_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- =====================================================
+-- COACHING/BOOKINGS
+-- =====================================================
+
+CREATE TABLE coaching_slots (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  creator_id UUID REFERENCES creators(id) ON DELETE CASCADE,
+  title VARCHAR(255) NOT NULL,
+  description TEXT,
+  duration_minutes INT DEFAULT 60,
+  price DECIMAL(10,2) NOT NULL,
+  available_days JSONB DEFAULT '[]',
+  available_times JSONB DEFAULT '[]',
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE bookings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  slot_id UUID REFERENCES coaching_slots(id),
+  student_id UUID REFERENCES students(id),
+  scheduled_at TIMESTAMPTZ NOT NULL,
+  zoom_meeting_id VARCHAR(255),
+  zoom_join_url TEXT,
+  status VARCHAR(20) DEFAULT 'confirmed',
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- =====================================================
+-- ANALYTICS
+-- =====================================================
+
+CREATE TABLE analytics_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  creator_id UUID REFERENCES creators(id),
+  student_id UUID REFERENCES students(id),
+  event_type VARCHAR(50) NOT NULL,
+  event_data JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable Row Level Security
+ALTER TABLE creators ENABLE ROW LEVEL SECURITY;
+ALTER TABLE students ENABLE ROW LEVEL SECURITY;
+ALTER TABLE courses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE enrollments ENABLE ROW LEVEL SECURITY;
+-- (Enable RLS on all tables)
+
+-- Create indexes for performance
+CREATE INDEX idx_courses_creator ON courses(creator_id);
+CREATE INDEX idx_enrollments_student ON enrollments(student_id);
+CREATE INDEX idx_enrollments_course ON enrollments(course_id);
+CREATE INDEX idx_orders_creator ON orders(creator_id);
+CREATE INDEX idx_analytics_creator ON analytics_events(creator_id);
+CREATE INDEX idx_analytics_created ON analytics_events(created_at);
+```
+
+---
+
+## Module Implementation Plans
+
+---
+
+## TIER 1: CORE LEARNING MODULES
+
+### Module 1: Course Delivery System
+
+> **Priority:** Critical | **Phase:** MVP (Week 3-4)
+
+#### Features
+- Video lesson playback with progress tracking
+- Multiple content types (video, text, PDF, audio)
+- Lesson navigation with completion status
+- Downloadable attachments
+- Preview lessons for marketing
+
+#### Technology Stack
+| Component | Tool | Purpose |
+|-----------|------|---------|
+| Video Hosting | Vimeo Pro / Cloudflare Stream | HLS streaming, DRM |
+| Video Player | Video.js / Plyr | Custom player UI |
+| Storage | Supabase Storage | PDFs, attachments |
+| Progress | Supabase Real-time | Live progress sync |
+| CDN | Cloudflare | Global delivery |
+
+#### Database Tables
+- `courses`, `course_modules`, `lessons`, `lesson_progress`
+
+#### API Endpoints
+```
+GET    /api/courses/:courseId
+GET    /api/courses/:courseId/modules
+GET    /api/lessons/:lessonId
+POST   /api/lessons/:lessonId/progress
+GET    /api/students/:studentId/progress
+```
+
+#### Implementation Steps
+1. Set up Vimeo Pro account and API integration
+2. Create Supabase tables for courses, modules, lessons
+3. Build lesson upload/management UI for creators
+4. Implement video player with progress tracking
+5. Create student course viewer with navigation
+6. Add real-time progress sync using Supabase subscriptions
+
+#### Estimated Time: 2 weeks
+
+---
+
+### Module 2: Student Management & Authentication
+
+> **Priority:** Critical | **Phase:** MVP (Week 5-6)
+
+#### Features
+- Student signup/login (email, Google, phone OTP)
+- Student profiles with avatars
+- Multi-tenant authentication (per creator)
+- Password reset, email verification
+- Session management
+
+#### Technology Stack
+| Component | Tool | Purpose |
+|-----------|------|---------|
+| Auth | Supabase Auth | OAuth, JWT, sessions |
+| OTP | MSG91 / Twilio | Phone verification |
+| Email | SendGrid | Verification emails |
+| Sessions | Supabase + Redis | Session storage |
+
+#### Database Tables
+- `students`, Supabase Auth tables
+
+#### Supabase Auth Configuration
+```javascript
+// supabase/config.js
+const supabaseAuth = {
+  providers: ['google', 'email'],
+  redirectTo: process.env.NEXT_PUBLIC_APP_URL,
+  emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`,
+};
+```
+
+#### API Endpoints
+```
+POST   /api/auth/signup
+POST   /api/auth/login
+POST   /api/auth/logout
+POST   /api/auth/forgot-password
+POST   /api/auth/verify-otp
+GET    /api/students/me
+PUT    /api/students/me
+```
+
+#### Implementation Steps
+1. Configure Supabase Auth with Google OAuth
+2. Set up Row Level Security (RLS) policies
+3. Implement multi-tenant auth (students belong to creators)
+4. Build signup/login pages with form validation
+5. Add phone OTP verification with MSG91
+6. Create student profile management
+
+#### Estimated Time: 2 weeks
+
+---
+
+### Module 13: Drip Content
+
+> **Priority:** Medium | **Phase:** Phase 2 (Week 29)
+
+#### Features
+- Time-based content release
+- Conditional unlock (complete X to unlock Y)
+- Enrollment-based drip schedules
+- Manual override for creators
+- Student notifications on unlock
+
+#### Technology Stack
+| Component | Tool | Purpose |
+|-----------|------|---------|
+| Scheduler | Supabase Edge Functions + Cron | Scheduled unlocks |
+| Notifications | Supabase Realtime | Live unlock alerts |
+| Queue | Supabase pg_cron | Background jobs |
+
+#### Database Additions
+```sql
+ALTER TABLE lessons ADD COLUMN drip_type VARCHAR(20) DEFAULT 'immediate';
+ALTER TABLE lessons ADD COLUMN drip_days_after_enrollment INT;
+ALTER TABLE lessons ADD COLUMN prerequisite_lesson_id UUID;
+```
+
+#### Implementation Steps
+1. Add drip configuration UI to lesson editor
+2. Implement drip calculation logic
+3. Create scheduled job for checking/unlocking content
+4. Build notification system for content unlocks
+5. Add override controls for creators
+
+#### Estimated Time: 1 week
+
+---
+
+## TIER 2: MONETIZATION MODULES
+
+### Module 3: Payment Gateway
+
+> **Priority:** Critical | **Phase:** MVP (Week 7-8)
+
+#### Features
+- Razorpay integration (UPI, cards, wallets)
+- Stripe integration (international payments)
+- Order management & invoicing
+- Refund processing
+- Webhook handling for payment events
+- Split payments for affiliates
+
+#### Technology Stack
+| Component | Tool | Purpose |
+|-----------|------|---------|
+| India Payments | Razorpay | UPI, cards, netbanking |
+| Global Payments | Stripe | International cards |
+| Invoicing | PDF-lib | Invoice generation |
+| Webhooks | Express middleware | Payment callbacks |
+
+#### Razorpay Integration
+```javascript
+// services/razorpay.js
+import Razorpay from 'razorpay';
+
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID,
+  key_secret: process.env.RAZORPAY_KEY_SECRET,
+});
+
+export async function createOrder(amount, currency = 'INR') {
+  return razorpay.orders.create({
+    amount: amount * 100, // paise
+    currency,
+    receipt: `order_${Date.now()}`,
+  });
+}
+
+export async function verifyPayment(orderId, paymentId, signature) {
+  const crypto = require('crypto');
+  const expectedSignature = crypto
+    .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+    .update(`${orderId}|${paymentId}`)
+    .digest('hex');
+  return expectedSignature === signature;
+}
+```
+
+#### Database Tables
+- `orders`, `refunds`
+
+#### API Endpoints
+```
+POST   /api/payments/create-order
+POST   /api/payments/verify
+POST   /api/payments/webhook/razorpay
+POST   /api/payments/webhook/stripe
+GET    /api/orders
+POST   /api/orders/:orderId/refund
+```
+
+#### Implementation Steps
+1. Set up Razorpay and Stripe accounts
+2. Implement order creation flow
+3. Build checkout UI with payment options
+4. Handle webhooks for payment confirmation
+5. Create invoice generation system
+6. Implement refund processing
+
+#### Estimated Time: 2 weeks
+
+---
+
+### Module 5: Membership System
+
+> **Priority:** High | **Phase:** MVP (Week 9-10)
+
+#### Features
+- Monthly/annual subscription plans
+- Multiple membership tiers
+- Course access bundling
+- Auto-renewal & billing
+- Cancellation & pause options
+- Proration handling
+
+#### Technology Stack
+| Component | Tool | Purpose |
+|-----------|------|---------|
+| Subscriptions | Razorpay Subscriptions | Recurring billing |
+| Billing | Stripe Billing | International subscriptions |
+| Scheduler | Supabase Edge Functions | Renewal reminders |
+
+#### Database Tables
+- `memberships`, `member_subscriptions`
+
+#### API Endpoints
+```
+GET    /api/memberships
+POST   /api/memberships
+GET    /api/subscriptions/me
+POST   /api/subscriptions/subscribe
+POST   /api/subscriptions/cancel
+POST   /api/subscriptions/pause
+```
+
+#### Implementation Steps
+1. Design membership tier UI for creators
+2. Integrate Razorpay Subscriptions API
+3. Build subscription management for students
+4. Implement webhook handlers for billing events
+5. Create renewal reminder system
+6. Add cancellation and refund logic
+
+#### Estimated Time: 2 weeks
+
+---
+
+### Module 10: Coupons & Referrals
+
+> **Priority:** Medium | **Phase:** Phase 2 (Week 28)
+
+#### Features
+- Percentage/fixed discount coupons
+- Usage limits & expiry dates
+- Course-specific coupons
+- Affiliate referral program
+- Commission tracking & payouts
+- Referral link generation
+
+#### Technology Stack
+| Component | Tool | Purpose |
+|-----------|------|---------|
+| Coupon Logic | Node.js | Validation & application |
+| Referral Tracking | Supabase | Affiliate links |
+| Payouts | Razorpay Payouts | Commission transfers |
+
+#### Database Tables
+- `coupons`, `affiliates`, `affiliate_referrals`, `affiliate_payouts`
+
+#### API Endpoints
+```
+POST   /api/coupons
+GET    /api/coupons
+POST   /api/coupons/validate
+POST   /api/affiliates
+GET    /api/affiliates/:id/stats
+POST   /api/affiliates/:id/payout
+```
+
+#### Implementation Steps
+1. Build coupon creation UI
+2. Implement coupon validation logic at checkout
+3. Create affiliate signup and dashboard
+4. Implement referral tracking with cookies/URL params
+5. Build commission calculation system
+6. Integrate Razorpay Payouts for affiliate payments
+
+#### Estimated Time: 1 week
+
+---
+
+### Module 12: Coaching Bookings
+
+> **Priority:** Medium | **Phase:** Phase 2 (Week 29)
+
+#### Features
+- 1:1 coaching slot management
+- Calendar availability settings
+- Auto Zoom meeting creation
+- Payment for bookings
+- Rescheduling & cancellation
+- Reminder notifications
+
+#### Technology Stack
+| Component | Tool | Purpose |
+|-----------|------|---------|
+| Calendar | Cal.com / Custom | Availability management |
+| Video Calls | Zoom SDK | Auto meeting creation |
+| Reminders | SendGrid + Cron | Email/SMS reminders |
+| Payments | Razorpay | Booking payments |
+
+#### Database Tables
+- `coaching_slots`, `bookings`
+
+#### Zoom Integration
+```javascript
+// services/zoom.js
+import axios from 'axios';
+
+export async function createMeeting(topic, startTime, duration) {
+  const response = await axios.post(
+    'https://api.zoom.us/v2/users/me/meetings',
+    {
+      topic,
+      type: 2, // Scheduled meeting
+      start_time: startTime,
+      duration,
+      settings: {
+        join_before_host: false,
+        waiting_room: true,
+      },
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${await getZoomAccessToken()}`,
+      },
+    }
+  );
+  return response.data;
+}
+```
+
+#### API Endpoints
+```
+GET    /api/coaching/slots
+POST   /api/coaching/slots
+GET    /api/coaching/availability
+POST   /api/bookings
+PUT    /api/bookings/:id/reschedule
+DELETE /api/bookings/:id
+```
+
+#### Implementation Steps
+1. Build availability management UI for creators
+2. Integrate Zoom SDK for meeting creation
+3. Create booking flow with payment
+4. Implement calendar sync (Google Calendar)
+5. Build reminder notification system
+6. Add rescheduling/cancellation logic
+
+#### Estimated Time: 1.5 weeks
+
+---
+
+## TIER 3: ENGAGEMENT MODULES
+
+### Module 4: Email Automation
+
+> **Priority:** High | **Phase:** Phase 2 (Week 19-20)
+
+#### Features
+- 30+ pre-built email sequences
+- Trigger-based automation (enrollment, completion, etc.)
+- A/B testing for subject lines
+- Email analytics (open, click rates)
+- Custom email templates
+- Segmentation & targeting
+
+#### Technology Stack
+| Component | Tool | Purpose |
+|-----------|------|---------|
+| Email Sending | SendGrid / AWS SES | Transactional emails |
+| Templates | MJML / React Email | Responsive templates |
+| Queue | Supabase Edge Functions | Background sending |
+| Analytics | SendGrid Events | Open/click tracking |
+
+#### Database Tables
+- `email_sequences`, `email_sequence_steps`, `email_logs`
+
+#### Pre-built Sequences
+1. Welcome series (5 emails)
+2. Course completion celebration
+3. Abandoned cart recovery
+4. Re-engagement (inactive students)
+5. Membership renewal reminders
+6. Quiz/certificate follow-up
+
+#### API Endpoints
+```
+GET    /api/email-sequences
+POST   /api/email-sequences
+PUT    /api/email-sequences/:id
+POST   /api/email-sequences/:id/test
+GET    /api/email-analytics
+```
+
+#### Implementation Steps
+1. Set up SendGrid account and verify domain
+2. Create MJML email templates
+3. Build sequence builder UI for creators
+4. Implement trigger-based automation engine
+5. Add webhook handlers for email events
+6. Create analytics dashboard
+
+#### Estimated Time: 2 weeks
+
+---
+
+### Module 6: Community Forums
+
+> **Priority:** Medium | **Phase:** Phase 2 (Week 21-22)
+
+#### Features
+- Discussion categories
+- Posts with rich text & media
+- Replies and threading
+- Upvotes and reputation system
+- Moderation tools (pin, lock, delete)
+- Search functionality
+- @mentions and notifications
+
+#### Technology Stack
+| Component | Tool | Purpose |
+|-----------|------|---------|
+| Database | Supabase | Posts, replies, votes |
+| Rich Text | TipTap / Slate | WYSIWYG editor |
+| Search | Supabase Full-text Search | Post search |
+| Real-time | Supabase Realtime | Live updates |
+| Notifications | Supabase + SendGrid | Mention alerts |
+
+#### Database Tables
+- `forum_categories`, `forum_posts`, `forum_replies`, `forum_votes`
+
+#### API Endpoints
+```
+GET    /api/forum/categories
+POST   /api/forum/posts
+GET    /api/forum/posts/:id
+POST   /api/forum/posts/:id/replies
+POST   /api/forum/posts/:id/vote
+GET    /api/forum/search
+```
+
+#### Implementation Steps
+1. Design forum UI with categories
+2. Implement rich text editor for posts
+3. Build voting and reputation system
+4. Add real-time updates using Supabase
+5. Implement full-text search
+6. Create moderation dashboard
+
+#### Estimated Time: 2 weeks
+
+---
+
+### Module 7: Live Classes (Zoom Integration)
+
+> **Priority:** Medium | **Phase:** Phase 2 (Week 23-24)
+
+#### Features
+- Schedule live classes
+- Auto Zoom meeting creation
+- Attendance tracking
+- Recording storage & playback
+- Calendar integration
+- Reminder notifications
+
+#### Technology Stack
+| Component | Tool | Purpose |
+|-----------|------|---------|
+| Video | Zoom SDK | Live classes |
+| Recording | Zoom Cloud / Vimeo | Recording storage |
+| Calendar | Google Calendar API | Sync & reminders |
+| Notifications | SendGrid | Email reminders |
+
+#### Database Tables
+- `live_classes`, `live_class_attendees`
+
+#### API Endpoints
+```
+GET    /api/live-classes
+POST   /api/live-classes
+GET    /api/live-classes/:id
+POST   /api/live-classes/:id/join
+GET    /api/live-classes/:id/recording
+DELETE /api/live-classes/:id
+```
+
+#### Implementation Steps
+1. Set up Zoom API OAuth flow
+2. Build live class scheduling UI
+3. Implement auto meeting creation
+4. Create join flow with authentication
+5. Handle recording webhooks and storage
+6. Add attendance tracking
+
+#### Estimated Time: 2 weeks
+
+---
+
+### Module 8: Quiz & Assessment
+
+> **Priority:** Medium | **Phase:** Phase 2 (Week 25-26)
+
+#### Features
+- Multiple question types (MCQ, true/false, fill-in)
+- Timed quizzes
+- Auto-grading
+- Attempt limits & retakes
+- Passing score requirements
+- Progress blocking (must pass to continue)
+- Detailed results & feedback
+
+#### Technology Stack
+| Component | Tool | Purpose |
+|-----------|------|---------|
+| Quiz Engine | Custom Node.js | Scoring logic |
+| Timer | Frontend + Server | Time tracking |
+| Storage | Supabase | Questions, attempts |
+
+#### Database Tables
+- `quizzes`, `quiz_questions`, `quiz_attempts`
+
+#### API Endpoints
+```
+POST   /api/quizzes
+GET    /api/quizzes/:id
+POST   /api/quizzes/:id/start
+POST   /api/quizzes/:id/submit
+GET    /api/quizzes/:id/results
+```
+
+#### Implementation Steps
+1. Build quiz creation UI with question types
+2. Implement timer and anti-cheat measures
+3. Create auto-grading engine
+4. Build results display with feedback
+5. Add attempt tracking and limits
+6. Implement progress blocking
+
+#### Estimated Time: 2 weeks
+
+---
+
+## TIER 4: INSIGHTS & BRANDING MODULES
+
+### Module 9: Certificates
+
+> **Priority:** Low | **Phase:** Phase 2 (Week 27)
+
+#### Features
+- Customizable certificate templates
+- Auto-generation on course completion
+- Unique certificate IDs
+- Verification page
+- PDF download
+- Digital badge integration
+
+#### Technology Stack
+| Component | Tool | Purpose |
+|-----------|------|---------|
+| PDF Generation | Puppeteer / pdf-lib | PDF creation |
+| Templates | HTML/CSS | Certificate design |
+| Storage | Supabase Storage | PDF storage |
+| Verification | Public API | Certificate lookup |
+
+#### Database Tables
+- `certificate_templates`, `issued_certificates`
+
+#### API Endpoints
+```
+POST   /api/certificates/templates
+GET    /api/certificates/templates
+POST   /api/certificates/issue
+GET    /api/certificates/:id
+GET    /api/certificates/verify/:code
+```
+
+#### Implementation Steps
+1. Build certificate template designer
+2. Implement PDF generation with Puppeteer
+3. Create auto-issuance on completion
+4. Build public verification page
+5. Add download functionality
+
+#### Estimated Time: 1 week
+
+---
+
+### Module 11: Analytics Dashboard
+
+> **Priority:** High | **Phase:** MVP (Week 11-12) + Phase 2
+
+#### Features
+- Revenue dashboard (daily, weekly, monthly)
+- Student enrollment metrics
+- Course completion rates
+- Lesson engagement analytics
+- Cohort analysis
+- Churn prediction (Phase 3)
+
+#### Technology Stack
+| Component | Tool | Purpose |
+|-----------|------|---------|
+| Charts | Recharts / Chart.js | Data visualization |
+| Data | Supabase + Views | Aggregated metrics |
+| Real-time | Supabase Realtime | Live updates |
+| Export | CSV/Excel | Data export |
+
+#### Database Tables
+- `analytics_events`, SQL Views for aggregations
+
+#### Key Metrics Dashboard
+```sql
+-- Revenue by day
+CREATE VIEW daily_revenue AS
+SELECT 
+  DATE(paid_at) as date,
+  SUM(amount) as revenue,
+  COUNT(*) as orders
+FROM orders 
+WHERE status = 'paid'
+GROUP BY DATE(paid_at);
+
+-- Course completion rates
+CREATE VIEW course_completion AS
+SELECT 
+  c.id as course_id,
+  c.title,
+  COUNT(e.id) as enrollments,
+  COUNT(CASE WHEN lp.completed = true THEN 1 END) as completions,
+  ROUND(COUNT(CASE WHEN lp.completed = true THEN 1 END)::numeric / COUNT(e.id) * 100, 2) as completion_rate
+FROM courses c
+LEFT JOIN enrollments e ON c.id = e.course_id
+LEFT JOIN lesson_progress lp ON e.student_id = lp.student_id
+GROUP BY c.id, c.title;
+```
+
+#### API Endpoints
+```
+GET    /api/analytics/overview
+GET    /api/analytics/revenue
+GET    /api/analytics/enrollments
+GET    /api/analytics/completion
+GET    /api/analytics/engagement
+GET    /api/analytics/export
+```
+
+#### Implementation Steps
+1. Create aggregation SQL views
+2. Build dashboard UI with charts
+3. Implement date range filters
+4. Add real-time updates for live data
+5. Create export functionality
+
+#### Estimated Time: 2 weeks (MVP) + 2 weeks (Advanced)
+
+---
+
+### Module 14: Branding & Customization
+
+> **Priority:** Medium | **Phase:** Phase 2 (Week 30)
+
+#### Features
+- White-label platform
+- Custom domain support
+- Logo and favicon upload
+- Color theme customization
+- Custom CSS injection
+- Email branding
+
+#### Technology Stack
+| Component | Tool | Purpose |
+|-----------|------|---------|
+| Theming | CSS Variables | Dynamic colors |
+| Domains | Vercel / Cloudflare | Custom domains |
+| Storage | Supabase Storage | Logo uploads |
+| SSL | Let's Encrypt | HTTPS for domains |
+
+#### Database Additions
+```sql
+ALTER TABLE creators ADD COLUMN branding JSONB DEFAULT '{
+  "logo_url": null,
+  "favicon_url": null,
+  "primary_color": "#6366f1",
+  "secondary_color": "#8b5cf6",
+  "custom_css": null
+}';
+```
+
+#### API Endpoints
+```
+GET    /api/branding
+PUT    /api/branding
+POST   /api/branding/logo
+POST   /api/branding/domain
+GET    /api/branding/domain/verify
+```
+
+#### Implementation Steps
+1. Build branding settings UI
+2. Implement CSS variable theming
+3. Create logo/favicon upload flow
+4. Configure custom domain handling
+5. Add SSL certificate automation
+
+#### Estimated Time: 1 week
+
+---
+
+## ADD-ON MODULES
+
+### Add-on A1: Mobile App (React Native)
+
+> **Priority:** High | **Phase:** Phase 2 (Parallel)
+
+#### Features
+- iOS & Android apps
+- Offline video downloads
+- Push notifications
+- Native video player
+- Touch ID / Face ID login
+- Course progress sync
+
+#### Technology Stack
+| Component | Tool | Purpose |
+|-----------|------|---------|
+| Framework | React Native + Expo | Cross-platform |
+| Video | React Native Video | Offline playback |
+| Storage | AsyncStorage | Local data |
+| Push | Firebase FCM | Notifications |
+| Auth | Supabase Auth | Authentication |
+
+#### Implementation Steps
+1. Set up Expo project
+2. Implement authentication screens
+3. Build course browsing and playback
+4. Add offline download functionality
+5. Integrate push notifications
+6. App store submission
+
+#### Estimated Time: 6-8 weeks (parallel)
+
+---
+
+### Add-on A2: Advanced Analytics
+
+> **Priority:** Medium | **Phase:** Phase 3
+
+#### Features
+- Cohort analysis
+- Customer lifetime value (LTV)
+- Churn prediction (ML)
+- Revenue forecasting
+- A/B testing framework
+- Custom reports
+
+#### Technology Stack
+| Component | Tool | Purpose |
+|-----------|------|---------|
+| ML | Python + scikit-learn | Churn prediction |
+| Data Pipeline | dbt / SQL | Data transformation |
+| Visualization | Recharts | Custom charts |
+| Export | Puppeteer | PDF reports |
+
+#### Implementation Steps
+1. Build cohort analysis queries
+2. Implement LTV calculation
+3. Train churn prediction model
+4. Create forecast algorithms
+5. Build A/B testing framework
+
+#### Estimated Time: 4-6 weeks
+
+---
+
+### Add-on A3: API Access
+
+> **Priority:** Medium | **Phase:** Phase 2 (Week 30)
+
+#### Features
+- REST API with 100+ endpoints
+- API key management
+- Rate limiting
+- Webhook configuration
+- API documentation
+- SDK libraries
+
+#### Technology Stack
+| Component | Tool | Purpose |
+|-----------|------|---------|
+| API | Express.js | REST endpoints |
+| Docs | Swagger / OpenAPI | Documentation |
+| Rate Limiting | Redis | Request throttling |
+| SDK | TypeScript | Client libraries |
+
+#### API Endpoints
+```
+POST   /api/keys/generate
+GET    /api/keys
+DELETE /api/keys/:id
+GET    /api/webhooks
+POST   /api/webhooks
+```
+
+#### Implementation Steps
+1. Generate API documentation with Swagger
+2. Implement API key authentication
+3. Add rate limiting with Redis
+4. Build webhook management
+5. Create SDK packages
+
+#### Estimated Time: 2 weeks
+
+---
+
+## Development Timeline Summary
+
+| Phase | Duration | Modules | Revenue Target |
+|-------|----------|---------|----------------|
+| **MVP** | Week 5-18 (14 weeks) | Course Delivery, Auth, Payments, Memberships, Basic Analytics | ₹50-150K |
+| **Phase 2** | Week 19-30 (12 weeks) | Email, Forums, Live Classes, Quiz, Certificates, Coupons, Coaching, Drip, Branding, Mobile App, API | ₹20-30L |
+| **Phase 3** | Week 31-52 (22 weeks) | Enterprise features, Advanced Analytics, Compliance | ₹30-50L |
+
+---
+
+## Infrastructure Requirements
+
+### Supabase Setup
+```bash
+# Install Supabase CLI
+npm install -g supabase
+
+# Initialize project
+supabase init
+
+# Start local development
+supabase start
+
+# Apply migrations
+supabase db push
+```
+
+### Environment Variables
+```env
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_key
+
+# Payments
+RAZORPAY_KEY_ID=your_razorpay_key
+RAZORPAY_KEY_SECRET=your_razorpay_secret
+STRIPE_SECRET_KEY=your_stripe_secret
+
+# Video
+VIMEO_ACCESS_TOKEN=your_vimeo_token
+
+# Email
+SENDGRID_API_KEY=your_sendgrid_key
+
+# Zoom
+ZOOM_CLIENT_ID=your_zoom_client_id
+ZOOM_CLIENT_SECRET=your_zoom_client_secret
+```
+
+---
+
+## User Review Required
+
+> [!IMPORTANT]
+> **Database Choice Confirmation**: This plan uses Supabase (PostgreSQL) as the primary database instead of MongoDB as mentioned in the original document. This provides:
+> - Built-in authentication
+> - Real-time subscriptions
+> - Row-level security
+> - Edge Functions for serverless computing
+> - Integrated storage
+
+> [!WARNING]
+> **Video Hosting Costs**: Vimeo Pro (~$20/month) or Cloudflare Stream (pay-as-you-go) will be significant costs at scale. Consider building CDN infrastructure for 100K+ students.
+
+> [!CAUTION]
+> **Payment Compliance**: Razorpay requires business verification. Ensure all KYC documentation is ready before integration.
+
+---
+
+## Next Steps
+
+1. **Immediate**: Set up Supabase project and run database migrations
+2. **Week 1-2**: Customer validation interviews (confirm feature priorities)
+3. **Week 3-4**: Begin MVP development (Course Delivery + Auth)
+4. **Week 5-6**: Payment gateway integration
+5. **Week 7-8**: First paying customer onboarding
