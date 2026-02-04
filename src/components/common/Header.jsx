@@ -18,8 +18,11 @@ import {
 } from './ResizableNavbar';
 
 const navLinks = [
-    { href: '/', label: 'Home' },
-    { href: '/about', label: 'About' },
+    { href: '/#about', label: 'About Us' },
+    { href: '/#mentor', label: 'Meet the mentor' },
+    { href: '/#curriculum', label: 'Curriculum' },
+    { href: '/#reviews', label: 'Reviews' },
+    { href: '/#faq', label: 'FAQs' },
 ];
 
 function Header() {
@@ -32,8 +35,13 @@ function Header() {
                 <div className="flex items-center gap-8 w-full">
                     <NavbarLogo />
                     <NavItems items={navLinks} />
-                    <div className="flex justify-end items-center">
-                        <NavbarButton>Get Started</NavbarButton>
+                    <div className="flex justify-end items-center gap-6 ml-auto">
+                        <Link to="/login" className="text-sm font-medium text-text-muted hover:text-secondary transition-colors">
+                            Login
+                        </Link>
+                        <Link to="/signup">
+                            <NavbarButton>Get Started</NavbarButton>
+                        </Link>
                     </div>
                 </div>
             </NavBody>

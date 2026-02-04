@@ -34,7 +34,7 @@ function HomeCurriculum() {
     ];
 
     return (
-        <section className="py-24 bg-dark">
+        <section id="curriculum" className="py-24 bg-dark">
             <div className="max-w-7xl mx-auto px-6">
                 {/* Section Header */}
                 <motion.div

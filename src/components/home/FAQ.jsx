@@ -32,7 +32,7 @@ function FAQ() {
     const [openIndex, setOpenIndex] = useState(null);
 
     return (
-        <section className="relative py-24 bg-dark overflow-hidden">
+        <section id="faq" className="relative py-24 bg-dark overflow-hidden">
             <div className="max-w-4xl mx-auto px-6 relative z-10">
                 {/* Header */}
                 <div className="text-center mb-16">

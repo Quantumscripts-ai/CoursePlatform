@@ -64,7 +64,7 @@ function Testimonials() {
     };
 
     return (
-        <section className="relative py-24 bg-dark overflow-hidden">
+        <section id="reviews" className="relative py-24 bg-dark overflow-hidden">
             <div className="max-w-7xl mx-auto px-6 relative z-10">
                 {/* Heading with Glow Effect */}
                 <motion.div
@@ -144,8 +144,8 @@ function Testimonials() {
                                 key={index}
                                 onClick={() => scrollToIndex(index)}
                                 className={`h-1.5 rounded-full transition-all duration-500 ${activeIndex === index
-                                        ? 'w-10 bg-secondary shadow-[0_0_10px_rgba(249,115,22,0.5)]'
-                                        : 'w-3 bg-white/10 hover:bg-white/30'
+                                    ? 'w-10 bg-secondary shadow-[0_0_10px_rgba(249,115,22,0.5)]'
+                                    : 'w-3 bg-white/10 hover:bg-white/30'
                                     }`}
                                 aria-label={`Go to testimonial ${index + 1}`}
                             />

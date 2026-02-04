@@ -123,7 +123,7 @@ export const NavItems = ({
                 className
             )}>
             {items.map((item, idx) => {
-                const isActive = location.pathname === item.href;
+                const isActive = (location.pathname + location.hash) === item.href;
                 return (
                     <Link
                         key={`link-${idx}`}

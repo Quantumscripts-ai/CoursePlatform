@@ -22,13 +22,19 @@ function Footer() {
 
                     {/* Horizontal Nav Links */}
                     <nav className="flex flex-wrap justify-center gap-x-8 gap-y-4">
-                        {['404', 'Thank You', 'Style Guide', 'Changelog', 'Licenses'].map((link) => (
+                        {[
+                            { label: 'About Us', href: '/#about' },
+                            { label: 'Meet the mentor', href: '/#mentor' },
+                            { label: 'Curriculum', href: '/#curriculum' },
+                            { label: 'Reviews', href: '/#reviews' },
+                            { label: 'FAQs', href: '/#faq' }
+                        ].map((link) => (
                             <a
-                                key={link}
-                                href={`/${link.toLowerCase().replace(' ', '-')}`}
+                                key={link.label}
+                                href={link.href}
                                 className="text-sm text-text-muted hover:text-white transition-colors"
                             >
-                                {link}
+                                {link.label}
                             </a>
                         ))}
                     </nav>

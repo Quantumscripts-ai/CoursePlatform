@@ -3,7 +3,7 @@ import { IconBrandLinkedin } from '@tabler/icons-react';
 
 const Instructor = () => {
     return (
-        <section className="relative py-24 bg-dark overflow-hidden">
+        <section id="mentor" className="relative py-24 bg-dark overflow-hidden">
             <div className="max-w-7xl mx-auto px-6 relative z-10">
                 <div className="text-center mb-16">
                     <motion.h2

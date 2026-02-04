@@ -31,7 +31,7 @@ const avatars = [
 
 function WhyMastery() {
     return (
-        <section className="relative py-24 bg-dark overflow-hidden">
+        <section id="about" className="relative py-24 bg-dark overflow-hidden">
             <div className="max-w-7xl mx-auto px-6 relative z-10">
                 <div className="text-center max-w-4xl mx-auto">
                     {/* Rating and Avatars */}
