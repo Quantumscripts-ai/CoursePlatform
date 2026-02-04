@@ -53,7 +53,7 @@ function Hero() {
                                 building skills that convert — step by step.
                             </p>
 
-                            <div className="flex justify-center items-center gap-6 flex-wrap mb-48">
+                            <div className="flex justify-center items-center gap-6 flex-wrap mb-24">
                                 <Link to="/courses/react">
                                     <button className="btn-orange flex items-center gap-2 px-8 py-4">
                                         Reserved your seat now

@@ -107,7 +107,7 @@ export function SpotlightNavbar({
             <nav
                 ref={navRef}
                 className={cn(
-                    "spotlight-nav spotlight-nav-bg glass-border spotlight-nav-shadow",
+                    "spotlight-nav spotlight-nav-bg spotlight-nav-shadow",
                     "relative h-11 rounded-full transition-all duration-300 overflow-hidden"
                 )}
             >
