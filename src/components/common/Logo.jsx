@@ -4,7 +4,7 @@
  */
 import { motion } from 'framer-motion';
 
-function Logo({ size = 'md', showText = true }) {
+function Logo({ size = 'md', showText = true, className = '' }) {
     const sizes = {
         sm: { icon: 28, text: 'text-xl' },
         md: { icon: 40, text: 'text-2xl' },
@@ -15,7 +15,7 @@ function Logo({ size = 'md', showText = true }) {
 
     return (
         <motion.div
-            className="flex items-center gap-3"
+            className={`flex items-center gap-3 ${className}`}
             whileHover={{ scale: 1.05 }}
             transition={{ type: 'spring', stiffness: 400 }}
         >

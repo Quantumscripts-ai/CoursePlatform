@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import AuthLayout from '../components/auth/AuthLayout';
 import { supabase } from '../lib/supabase';
@@ -10,6 +10,13 @@ const Signup = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const navigate = useNavigate();
+
+    useEffect(() => {
+        // Redirect if already logged in
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            if (session) navigate('/studentdashboard');
+        });
+    }, [navigate]);
 
     const handleSignup = async (e) => {
         e.preventDefault();
@@ -46,6 +53,9 @@ const Signup = () => {
         try {
             const { error } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
+                options: {
+                    redirectTo: window.location.origin + '/studentdashboard'
+                }
             });
             if (error) throw error;
         } catch (err) {

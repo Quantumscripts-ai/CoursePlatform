@@ -8,6 +8,7 @@ import Footer from './components/common/Footer';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import Dashboard from './pages/Dashboard';
 import './index.css';
 import { useEffect } from 'react';
 
@@ -28,17 +29,25 @@ function ScrollToHash() {
 
 function AppContent() {
   const location = useLocation();
+
+  // Routes that hide header and footer (full-screen layouts)
+  const hideLayoutRoutes = ['/studentdashboard'];
+  const shouldHideLayout = hideLayoutRoutes.some(route => location.pathname.startsWith(route));
+
+  // Routes that only hide footer
   const hideFooterRoutes = ['/login', '/signup'];
-  const shouldHideFooter = hideFooterRoutes.includes(location.pathname);
+  const shouldHideFooter = hideFooterRoutes.includes(location.pathname) || shouldHideLayout;
 
   return (
     <div className="app">
       <ScrollToHash />
-      <Header />
+      {!shouldHideLayout && <Header />}
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/studentdashboard" element={<Dashboard />} />
+        <Route path="/studentdashboard/*" element={<Dashboard />} />
       </Routes>
       {!shouldHideFooter && <Footer />}
     </div>
@@ -54,4 +63,3 @@ function App() {
 }
 
 export default App;
-
