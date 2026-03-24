@@ -1,56 +1,57 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import AuthLayout from '../components/auth/AuthLayout';
-import { supabase } from '../lib/supabase';
+import { useAuth } from '../hooks/useAuth';
+import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { auth, db } from '../lib/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 const Login = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
+    const [notice, setNotice] = useState(null);
+    const { logIn } = useAuth();
     const navigate = useNavigate();
-
-    useEffect(() => {
-        // Redirect if already logged in
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            if (session) navigate('/studentdashboard');
-        });
-    }, [navigate]);
 
     const handleLogin = async (e) => {
         e.preventDefault();
         setLoading(true);
-        setError(null);
+        setNotice(null);
 
         try {
-            const { data, error } = await supabase.auth.signInWithPassword({
-                email,
-                password,
-            });
-
-            if (error) throw error;
-
-            if (data.user) {
-                navigate('/studentdashboard'); // Assuming there's a dashboard or home page
-            }
-        } catch (err) {
-            setError(err.message);
+            await logIn(email, password);
+            navigate('/studentdashboard');
+        } catch (error) {
+            console.error(error);
+            setNotice(error.message || 'Failed to sign in. Please check your credentials.');
         } finally {
             setLoading(false);
         }
     };
 
     const handleGoogleLogin = async () => {
+        setNotice(null);
         try {
-            const { error } = await supabase.auth.signInWithOAuth({
-                provider: 'google',
-                options: {
-                    redirectTo: window.location.origin + '/studentdashboard'
-                }
-            });
-            if (error) throw error;
-        } catch (err) {
-            setError(err.message);
+            const provider = new GoogleAuthProvider();
+            const result = await signInWithPopup(auth, provider);
+
+            // Check if user exists in db, if not create profile
+            const userRef = doc(db, 'users', result.user.uid);
+            const userSnap = await getDoc(userRef);
+
+            if (!userSnap.exists()) {
+                await setDoc(userRef, {
+                    uid: result.user.uid,
+                    email: result.user.email,
+                    fullName: result.user.displayName || 'Google User',
+                    createdAt: new Date().toISOString()
+                });
+            }
+            navigate('/studentdashboard');
+        } catch (error) {
+            console.error(error);
+            setNotice(error.message || 'Failed to sign in with Google.');
         }
     };
 
@@ -60,9 +61,9 @@ const Login = () => {
             subtitle="Enter your details to access your account"
         >
             <form className="space-y-6" onSubmit={handleLogin}>
-                {error && (
-                    <div className="p-4 bg-red-500/10 border border-red-500/50 rounded-2xl text-red-500 text-sm">
-                        {error}
+                {notice && (
+                    <div className="p-4 bg-secondary/10 border border-secondary/50 rounded-2xl text-secondary text-sm">
+                        {notice}
                     </div>
                 )}
                 <div>

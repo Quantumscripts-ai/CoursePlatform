@@ -126,48 +126,45 @@ function Registration() {
                             </div>
 
                             <h3 className="text-4xl font-bold font-display text-dark mb-2">
-                                Registration <span className="text-secondary italic">form</span>
+                                Enroll <span className="text-secondary italic">Now</span>
                             </h3>
-                            <p className="text-gray-500 mb-10 text-sm">Fill in the form below to secure your free seat.</p>
+                            <p className="text-gray-500 mb-6 text-sm">Get lifetime access to all course content</p>
 
-                            <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
-                                <div className="space-y-2">
-                                    <label className="text-dark font-bold text-sm block ml-1" htmlFor="name">Full name</label>
-                                    <input
-                                        type="text"
-                                        id="name"
-                                        placeholder="Enter your full name"
-                                        className="w-full px-6 py-4 rounded-xl bg-gray-50 border border-gray-100 text-dark focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all"
-                                    />
+                            {/* Price Display */}
+                            <div className="bg-gray-50 rounded-xl p-6 mb-8">
+                                <div className="flex items-baseline justify-between">
+                                    <span className="text-gray-500">Total Investment</span>
+                                    <div className="flex items-baseline gap-2">
+                                        <span className="text-5xl font-bold text-dark">$1</span>
+                                        <span className="text-gray-400 line-through">$199</span>
+                                    </div>
                                 </div>
+                                <p className="text-sm text-secondary mt-2 text-right font-medium">Limited time offer!</p>
+                            </div>
 
-                                <div className="space-y-2">
-                                    <label className="text-dark font-bold text-sm block ml-1" htmlFor="email">Email ID</label>
-                                    <input
-                                        type="email"
-                                        id="email"
-                                        placeholder="Enter your email"
-                                        className="w-full px-6 py-4 rounded-xl bg-gray-50 border border-gray-100 text-dark focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all"
-                                    />
-                                </div>
+                            {/* Benefits List */}
+                            <ul className="space-y-3 mb-8">
+                                {['Lifetime access to all 6 modules', '18 comprehensive video lessons', 'Certificate of completion', 'Future updates included'].map((benefit, i) => (
+                                    <li key={i} className="flex items-center gap-3 text-gray-600 text-sm">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-green-500">
+                                            <polyline points="20 6 9 17 4 12"></polyline>
+                                        </svg>
+                                        {benefit}
+                                    </li>
+                                ))}
+                            </ul>
 
-                                <div className="space-y-2">
-                                    <label className="text-dark font-bold text-sm block ml-1" htmlFor="phone">Phone number</label>
-                                    <input
-                                        type="tel"
-                                        id="phone"
-                                        placeholder="Enter your phone number"
-                                        className="w-full px-6 py-4 rounded-xl bg-gray-50 border border-gray-100 text-dark focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all"
-                                    />
-                                </div>
+                            {/* Stripe Checkout Button */}
+                            <a
+                                href={import.meta.env.VITE_PAYMENT_LINK_URL || 'https://buy.stripe.com/test_bJecMY7ON7eddnDaFG6J203'}
+                                className="block w-full bg-secondary hover:bg-secondary/90 text-white font-bold py-5 rounded-xl shadow-lg shadow-secondary/30 transition-all hover:scale-[1.02] active:scale-[0.98] text-center"
+                            >
+                                🎉 Enroll Now — Only $1!
+                            </a>
 
-                                <button
-                                    type="submit"
-                                    className="w-full bg-secondary hover:bg-secondary/90 text-white font-bold py-5 rounded-xl shadow-lg shadow-secondary/30 transition-all hover:scale-[1.02] active:scale-[0.98] mt-4"
-                                >
-                                    Reserved your seat now
-                                </button>
-                            </form>
+                            <p className="text-center text-gray-400 text-xs mt-4">
+                                Secure checkout powered by Stripe
+                            </p>
                         </div>
                     </motion.div>
                 </div>

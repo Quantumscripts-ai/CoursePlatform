@@ -9,6 +9,8 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
+import Payment from './pages/Payment';
+import PaymentSuccess from './pages/PaymentSuccess';
 import './index.css';
 import { useEffect } from 'react';
 
@@ -35,7 +37,7 @@ function AppContent() {
   const shouldHideLayout = hideLayoutRoutes.some(route => location.pathname.startsWith(route));
 
   // Routes that only hide footer
-  const hideFooterRoutes = ['/login', '/signup'];
+  const hideFooterRoutes = ['/login', '/signup', '/payment', '/payment-success'];
   const shouldHideFooter = hideFooterRoutes.includes(location.pathname) || shouldHideLayout;
 
   return (
@@ -46,6 +48,8 @@ function AppContent() {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/payment" element={<Payment />} />
+        <Route path="/payment-success" element={<PaymentSuccess />} />
         <Route path="/studentdashboard" element={<Dashboard />} />
         <Route path="/studentdashboard/*" element={<Dashboard />} />
       </Routes>

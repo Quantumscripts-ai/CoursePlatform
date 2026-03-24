@@ -76,9 +76,10 @@ export const NavBody = ({
                 boxShadow: visible
                     ? "0 0 24px rgba(0, 0, 0, 0.5), 0 1px 1px rgba(0, 0, 0, 0.2)"
                     : "none",
-                width: visible ? "60%" : "100%",
-                y: visible ? 12 : 0,
-                backgroundColor: visible ? "rgba(26, 26, 26, 0.8)" : "transparent",
+                width: visible ? "75%" : "100%",
+                y: visible ? 16 : 0,
+                backgroundColor: visible ? "rgba(26, 26, 26, 0.85)" : "transparent",
+                border: visible ? "1px solid rgba(255, 255, 255, 0.1)" : "1px solid transparent",
             }}
             transition={{
                 type: "spring",
@@ -141,7 +142,7 @@ export const NavItems = ({
                                 transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                             />
                         )}
-                        <span className="relative z-20">{item.label}</span>
+                        <span className="relative z-20 font-medium tracking-tight whitespace-nowrap">{item.label}</span>
                     </Link>
                 );
             })}

@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { IconBook, IconFolder, IconUsers, IconLogout, IconMenu2, IconX, IconLayoutSidebar, IconLayoutSidebarLeftCollapse, IconUser } from '@tabler/icons-react';
 import Logo from '../common/Logo';
+import { useAuth } from '../../hooks/useAuth';
 
 const navItems = [
     { id: 'learning', label: 'Student Dashboard', icon: IconBook, path: '/studentdashboard' },
@@ -18,6 +19,7 @@ function Sidebar() {
     const location = useLocation();
     const [isOpen, setIsOpen] = useState(false);
     const [isCollapsed, setIsCollapsed] = useState(false);
+    const { signOut } = useAuth();
 
     const isActive = (path) => {
         if (path === '/studentdashboard') {
@@ -150,6 +152,7 @@ function Sidebar() {
                     </Link>
 
                     <button
+                        onClick={signOut}
                         className={`
                             flex items-center rounded-xl w-full
                             text-text-muted hover:text-red-400 hover:bg-red-500/10

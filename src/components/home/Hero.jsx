@@ -4,7 +4,7 @@ import ContainerScroll from '../common/ContainerScroll';
 
 function Hero() {
     return (
-        <section className="relative min-h-screen bg-dark overflow-hidden pt-32 pb-32">
+        <section className="relative min-h-[70vh] flex flex-col items-center bg-dark overflow-hidden pt-20 pb-10 md:pt-24 md:pb-32">
             {/* Orange Glow Background Effects - Subtle */}
             <div className="absolute inset-0 z-0">
                 <div
@@ -42,7 +42,7 @@ function Hero() {
                                 <span className="text-text-muted text-sm">4.6 Rate by 16,000+ Reviews</span>
                             </motion.div>
 
-                            <h1 className="text-[clamp(2.5rem,7vw,4.5rem)] font-bold font-display leading-[1.1] mb-6 tracking-tight text-text">
+                            <h1 className="text-[clamp(2rem,8vw,4.5rem)] font-bold font-display leading-[1.1] mb-6 tracking-tight text-text px-4">
                                 Master the <span className="text-secondary">Future of Tech</span>
                                 <br />
                                 & Build Your Career
@@ -55,17 +55,17 @@ function Hero() {
 
                             <div className="flex justify-center items-center gap-6 flex-wrap mb-24">
                                 <Link to="/courses/react">
-                                    <button className="btn-orange flex items-center gap-2 px-8 py-4">
-                                        Reserved your seat now
-                                        <span className="text-xl">›</span>
+                                    <button className="btn-orange flex items-center gap-2 px-6 py-3 md:px-8 md:py-4 text-sm md:text-base">
+                                        Reserve your seat now
+                                        <span className="text-xl">&rsaquo;</span>
                                     </button>
                                 </Link>
                                 <Link
                                     to="/about"
-                                    className="text-text-muted hover:text-text transition-colors flex items-center gap-2 font-medium bg-white/5 px-6 py-4 rounded-full border border-white/10"
+                                    className="text-text-muted hover:text-text transition-colors flex items-center gap-2 font-medium bg-white/5 px-5 py-3 md:px-6 md:py-4 rounded-full border border-white/10 text-sm md:text-base"
                                 >
                                     Book a demo session
-                                    <span className="text-xl">›</span>
+                                    <span className="text-xl">&rsaquo;</span>
                                 </Link>
                             </div>
                         </div>

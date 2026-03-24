@@ -85,7 +85,7 @@ function ModuleItem({ module, index }) {
             {/* Module Title */}
             <div className="relative z-10 flex-1 min-w-0">
                 <p className={`font-medium truncate ${locked ? 'text-text-dim' : 'text-text'}`}>
-                    Module {module.id}: {title}
+                    Module {index + 1}: {title}
                     {current && <span className="text-secondary ml-2">(Current)</span>}
                 </p>
             </div>

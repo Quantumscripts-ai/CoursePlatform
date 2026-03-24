@@ -18,11 +18,11 @@ import {
 } from './ResizableNavbar';
 
 const navLinks = [
-    { href: '/#about', label: 'About Us' },
-    { href: '/#mentor', label: 'Meet the mentor' },
-    { href: '/#curriculum', label: 'Curriculum' },
+    { href: '/#about', label: 'About' },
+    { href: '/#mentor', label: 'Mentors' },
+    { href: '/#curriculum', label: 'Syllabus' },
     { href: '/#reviews', label: 'Reviews' },
-    { href: '/#faq', label: 'FAQs' },
+    { href: '/#faq', label: 'FAQ' },
 ];
 
 function Header() {
@@ -35,12 +35,14 @@ function Header() {
                 <div className="flex items-center gap-8 w-full">
                     <NavbarLogo />
                     <NavItems items={navLinks} />
-                    <div className="flex justify-end items-center gap-6 ml-auto">
-                        <Link to="/login" className="text-sm font-medium text-text-muted hover:text-secondary transition-colors">
+                    <div className="flex justify-end items-center gap-4 ml-auto">
+                        <Link to="/login" className="text-sm font-semibold text-text-muted hover:text-secondary transition-all duration-300 hover:tracking-wide px-2">
                             Login
                         </Link>
                         <Link to="/signup">
-                            <NavbarButton>Get Started</NavbarButton>
+                            <NavbarButton className="shadow-lg shadow-secondary/10 hover:shadow-secondary/20 transition-all">
+                                Get Started
+                            </NavbarButton>
                         </Link>
                     </div>
                 </div>
