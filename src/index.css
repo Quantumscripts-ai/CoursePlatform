@@ -153,12 +153,42 @@
     @apply bg-dark/60 backdrop-blur-md;
   }
 
+  /* Glass Component Borders */
   .glass-border {
-    @apply border border-white/10;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+  }
+
+  .dark .glass-border {
+    border: 1px solid rgba(255, 255, 255, 0.2);
   }
 
   .spotlight-nav-shadow {
     box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  }
+
+  /* Dashboard V2 Specific Styles */
+  .hero-gradient {
+    background: linear-gradient(135deg, #FF6B00 0%, #B84D00 100%);
+  }
+
+  .card-v2 {
+    @apply bg-white dark:bg-dark/40 backdrop-blur-xl rounded-4xl border border-neutral-100 dark:border-white/5 shadow-dashboard;
+  }
+
+  .shadow-dashboard {
+    box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.05);
+  }
+
+  .dark .shadow-dashboard {
+    box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.3);
+  }
+
+  .rounded-4xl {
+    border-radius: 2rem;
+  }
+
+  .rounded-5xl {
+    border-radius: 3rem;
   }
 }
 

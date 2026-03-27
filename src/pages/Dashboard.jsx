@@ -1,17 +1,13 @@
-/**
- * Dashboard Page — UI Only
- * Auth redirects removed. Renders with mock course data.
- * Firebase integration pending.
- */
-import { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import DashboardLayout from '../components/dashboard/DashboardLayout';
-import CourseHeader from '../components/dashboard/CourseHeader';
-import ContinueLearning from '../components/dashboard/ContinueLearning';
-import ModuleList from '../components/dashboard/ModuleList';
+import { useAuth } from '../hooks/useAuth';
 import { useEnrollment } from '../hooks/useEnrollment';
 import { useProgress } from '../hooks/useProgress';
-import { useAuth } from '../hooks/useAuth';
+import DashboardLayout from '../components/dashboard/DashboardLayout';
+import { WelcomeHero } from '../components/dashboard/v2/WelcomeHero';
+import { StatsGrid } from '../components/dashboard/v2/StatsGrid';
+import { ActivitySection } from '../components/dashboard/v2/ActivitySection';
+import { CoursePath } from '../components/dashboard/v2/CoursePath';
 
 function Dashboard() {
     const { user, loading: authLoading } = useAuth();
@@ -38,7 +34,7 @@ function Dashboard() {
                 <div className="flex items-center justify-center min-h-[60vh]">
                     <div className="text-center">
                         <div className="w-16 h-16 border-4 border-secondary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                        <p className="text-text-muted">Loading your dashboard...</p>
+                        <p className="text-dashboard-muted">Loading your dashboard...</p>
                     </div>
                 </div>
             </DashboardLayout>
@@ -52,7 +48,7 @@ function Dashboard() {
                 <div className="flex items-center justify-center min-h-[60vh]">
                     <div className="text-center text-red-400">
                         <p className="text-lg font-semibold mb-2">Error loading course data</p>
-                        <p className="text-sm text-text-muted">{enrollmentError}</p>
+                        <p className="text-sm text-dashboard-muted">{enrollmentError}</p>
                     </div>
                 </div>
             </DashboardLayout>
@@ -64,9 +60,9 @@ function Dashboard() {
         return (
             <DashboardLayout>
                 <div className="flex items-center justify-center min-h-[60vh]">
-                    <div className="text-center text-text-muted">
-                        <p className="text-lg font-semibold mb-2">No course available</p>
-                        <p className="text-sm">Please contact support for access.</p>
+                    <div className="text-center text-dashboard-muted">
+                        <p className="text-lg font-semibold mb-2">No joined course found</p>
+                        <p className="text-sm">Please explore our catalog to get started.</p>
                     </div>
                 </div>
             </DashboardLayout>
@@ -77,10 +73,7 @@ function Dashboard() {
     const modulesWithProgress = course.modules?.map((module, index) => {
         const moduleProgress = getModuleProgressStats(module.id);
         const isCompleted = moduleProgress.isCompleted;
-
-        // First module always unlocked, others require sequential completion
         const isLocked = index > 0 && !getModuleProgressStats(course.modules[index - 1].id).isCompleted;
-
         const isCurrent = currentLesson?.moduleId === module.id;
 
         return {
@@ -93,28 +86,30 @@ function Dashboard() {
         };
     }) || [];
 
-    const currentModuleNumber = currentLesson
-        ? modulesWithProgress.findIndex(m => m.id === currentLesson.moduleId) + 1
-        : 1;
+    const stats = {
+        inProgress: modulesWithProgress.filter(m => !m.completed && !m.locked).length,
+        completed: modulesWithProgress.filter(m => m.completed).length,
+        hours: Math.floor(overallProgress * 1.5) // Mock hours calculation
+    };
 
     return (
         <DashboardLayout>
-            {/* Course Title */}
-            <CourseHeader title={course.title} />
+            <div className="pt-2">
+                <WelcomeHero 
+                    userName={user.displayName?.split(' ')[0] || "Alexander"} 
+                    progress={Math.round(overallProgress)} 
+                    courseName={course.title}
+                />
 
-            {/* Continue Learning Card */}
-            <ContinueLearning
-                currentModule={currentModuleNumber}
-                progress={overallProgress}
-                lessonTitle={currentLesson?.title || "Get Started"}
-            />
+                <StatsGrid 
+                   inProgressCount={stats.inProgress}
+                   completedCount={stats.completed}
+                   totalHours={stats.hours}
+                />
 
-            {/* Module List */}
-            <div className="mt-8">
-                <h3 className="text-lg font-semibold text-text-muted mb-4 pl-1">
-                    Course Modules
-                </h3>
-                <ModuleList modules={modulesWithProgress} />
+                <ActivitySection />
+
+                <CoursePath />
             </div>
         </DashboardLayout>
     );
