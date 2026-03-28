@@ -57,6 +57,17 @@
   /* Font families */
   --font-sans: 'Poppins', ui-sans-serif, system-ui, sans-serif;
   --font-display: 'Poppins', ui-sans-serif, system-ui, sans-serif;
+
+  /* Custom Shadow and Radius */
+  --shadow-dashboard: 0 20px 40px -15px rgba(0, 0, 0, 0.05);
+  --radius-4xl: 2rem;
+  --radius-5xl: 3rem;
+}
+
+@variant dark {
+  @theme {
+    --shadow-dashboard: 0 20px 40px -15px rgba(0, 0, 0, 0.3);
+  }
 }
 
 /* Base Styles */
@@ -173,22 +184,6 @@
 
   .card-v2 {
     @apply bg-white dark:bg-dark/40 backdrop-blur-xl rounded-4xl border border-neutral-100 dark:border-white/5 shadow-dashboard;
-  }
-
-  .shadow-dashboard {
-    box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.05);
-  }
-
-  .dark .shadow-dashboard {
-    box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.3);
-  }
-
-  .rounded-4xl {
-    border-radius: 2rem;
-  }
-
-  .rounded-5xl {
-    border-radius: 3rem;
   }
 }
 
