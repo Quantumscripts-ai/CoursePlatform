@@ -5,6 +5,7 @@ import { useEnrollment } from '../hooks/useEnrollment';
 import { useProgress } from '../hooks/useProgress';
 import DashboardLayout from '../components/dashboard/DashboardLayout';
 import { WelcomeHero } from '../components/dashboard/v2/WelcomeHero';
+import { SearchCentre } from '../components/dashboard/v2/SearchCentre';
 import { StatsGrid } from '../components/dashboard/v2/StatsGrid';
 import { ActivitySection } from '../components/dashboard/v2/ActivitySection';
 import { CoursePath } from '../components/dashboard/v2/CoursePath';
@@ -95,16 +96,18 @@ function Dashboard() {
     return (
         <DashboardLayout>
             <div className="pt-2">
-                <WelcomeHero 
-                    userName={user.displayName?.split(' ')[0] || "Alexander"} 
-                    progress={Math.round(overallProgress)} 
+                <SearchCentre />
+
+                <WelcomeHero
+                    userName={user.displayName?.split(' ')[0] || "Alexander"}
+                    progress={Math.round(overallProgress)}
                     courseName={course.title}
                 />
 
-                <StatsGrid 
-                   inProgressCount={stats.inProgress}
-                   completedCount={stats.completed}
-                   totalHours={stats.hours}
+                <StatsGrid
+                    inProgressCount={stats.inProgress}
+                    completedCount={stats.completed}
+                    totalHours={stats.hours}
                 />
 
                 <ActivitySection />

@@ -35,18 +35,18 @@
    ================================================ */
 
 @theme {
-  /* Colors - Orange & Black Theme */
-  --color-primary: #000000;
+  /* Base Colors - Managed via CSS variables for theme support */
+  --color-primary: var(--primary-color);
   --color-secondary: #f97316;
   --color-accent: #fb923c;
-  --color-dark: #000000;
-  --color-dark-light: #0a0a0a;
-  --color-dark-mid: #141414;
-  --color-dark-card: #1a1a1a;
-  --color-text: #ffffff;
-  --color-text-muted: #a3a3a3;
-  --color-text-dim: #525252;
-  --color-border: rgba(255, 255, 255, 0.1);
+  --color-dark: var(--bg-color);
+  --color-dark-light: var(--bg-light-color);
+  --color-dark-mid: var(--bg-mid-color);
+  --color-dark-card: var(--card-bg-color);
+  --color-text: var(--text-color);
+  --color-text-muted: var(--text-muted-color);
+  --color-text-dim: var(--text-dim-color);
+  --color-border: var(--border-color);
   --color-border-hover: rgba(249, 115, 22, 0.4);
 
   /* Course-specific colors */
@@ -59,15 +59,25 @@
   --font-display: 'Poppins', ui-sans-serif, system-ui, sans-serif;
 
   /* Custom Shadow and Radius */
-  --shadow-dashboard: 0 20px 40px -15px rgba(0, 0, 0, 0.05);
+  --shadow-dashboard: 0 20px 40px -15px rgba(249, 115, 22, 0.08);
   --radius-4xl: 2rem;
   --radius-5xl: 3rem;
 }
 
-@variant dark {
-  @theme {
-    --shadow-dashboard: 0 20px 40px -15px rgba(0, 0, 0, 0.3);
-  }
+:root {
+  --primary-color: #000000;
+  --bg-color: #000000;
+  --bg-light-color: #0a0a0a;
+  --bg-mid-color: #141414;
+  --card-bg-color: #1a1a1a;
+  --text-color: #ffffff;
+  --text-muted-color: #a3a3a3;
+  --text-dim-color: #525252;
+  --border-color: rgba(255, 255, 255, 0.1);
+}
+
+@theme {
+  --shadow-dashboard: 0 20px 40px -15px rgba(0, 0, 0, 0.3);
 }
 
 /* Base Styles */
@@ -183,7 +193,7 @@
   }
 
   .card-v2 {
-    @apply bg-white dark:bg-dark/40 backdrop-blur-xl rounded-4xl border border-neutral-100 dark:border-white/5 shadow-dashboard;
+    @apply bg-white dark:bg-dark/40 backdrop-blur-xl rounded-4xl border border-orange-200/40 dark:border-white/5 shadow-dashboard;
   }
 }
 

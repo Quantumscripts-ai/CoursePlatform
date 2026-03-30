@@ -44,7 +44,7 @@ export const GlassDock = React.forwardRef(
           >
               <div
                   className={cn(
-                      "relative flex gap-4 items-center px-6 py-4 rounded-2xl",
+                      "relative flex gap-4 items-center px-6 py-4 rounded-full",
                       "glass-border bg-white/80 dark:bg-black/80",
                       "backdrop-blur-xl shadow-2xl",
                       dockClassName

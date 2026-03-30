@@ -2,7 +2,6 @@ import { useNavigate } from 'react-router-dom';
 import { Home, BookOpen, Users, User, LogOut } from 'lucide-react';
 import { GlassDock } from '../ui/GlassDock';
 import { useAuth } from '../../hooks/useAuth';
-import { TopNav } from './v2/TopNav';
 
 function DashboardLayout({ children }) {
     const navigate = useNavigate();
@@ -10,8 +9,7 @@ function DashboardLayout({ children }) {
 
     return (
         <div className="min-h-screen bg-dashboard flex flex-col relative overflow-x-hidden">
-            {/* Top Navigation */}
-            <TopNav userName={user?.displayName || "Student"} />
+            {/* Top Navigation Removal - Clean Focus */}
 
             {/* Background Orange Glows - Subtler for the new design */}
             <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
@@ -40,14 +38,14 @@ function DashboardLayout({ children }) {
 
             {/* Glass Dock Navigation */}
             <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50">
-                <GlassDock 
+                <GlassDock
                     items={[
                         { title: 'Dashboard', icon: Home, onClick: () => navigate('/studentdashboard') },
                         { title: 'Resources', icon: BookOpen, onClick: () => navigate('/studentdashboard/resources') },
                         { title: 'Community', icon: Users, onClick: () => navigate('/studentdashboard/community') },
                         { title: 'Profile', icon: User, onClick: () => navigate('/studentdashboard/profile') },
                         { title: 'Logout', icon: LogOut, onClick: signOut },
-                    ]} 
+                    ]}
                 />
             </div>
 

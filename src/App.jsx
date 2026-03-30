@@ -9,6 +9,9 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
+import Resources from './pages/Resources';
+import Community from './pages/Community';
+import Profile from './pages/Profile';
 import Payment from './pages/Payment';
 import PaymentSuccess from './pages/PaymentSuccess';
 import './index.css';
@@ -51,6 +54,9 @@ function AppContent() {
         <Route path="/payment" element={<Payment />} />
         <Route path="/payment-success" element={<PaymentSuccess />} />
         <Route path="/studentdashboard" element={<Dashboard />} />
+        <Route path="/studentdashboard/resources" element={<Resources />} />
+        <Route path="/studentdashboard/community" element={<Community />} />
+        <Route path="/studentdashboard/profile" element={<Profile />} />
         <Route path="/studentdashboard/*" element={<Dashboard />} />
       </Routes>
       {!shouldHideFooter && <Footer />}
